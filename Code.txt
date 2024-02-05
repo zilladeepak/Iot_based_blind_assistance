@@ -1,0 +1,159 @@
+#include <DHT.h>
+#include "mp3tf16p.h"
+
+#define ePin1 10
+#define tPin1 9
+#define ePin2 7
+#define tPin2 8
+#define ePin3 6
+#define tPin3 5
+#define vib1 2
+#define firepin 4
+#define ldrpin A0  // Photoresistor pin
+#define waterpin A1
+#define DHTPIN 3          // define pin for DHT11 sensor
+#define DHTTYPE DHT11     // define sensor type
+
+DHT dht(DHTPIN, DHTTYPE); // create DHT object
+MP3Player mp3(12,11);
+
+
+// defines variables
+long dur1,dur2,dur3; // variable for the duration of sound wave travel
+int dist1,dist2,dist3; // variable for the distance measurement
+int watervalue=0;
+int firevalue, ldrvalue;
+float temperature, humidity;
+
+void setup() {
+  Serial.begin(9600);
+  mp3.initialize();
+  pinMode(tPin1, OUTPUT);
+  pinMode(ePin1, INPUT);
+  pinMode(tPin2, OUTPUT);
+  pinMode(ePin2, INPUT);
+  pinMode(tPin3, OUTPUT);
+  pinMode(ePin3, INPUT);
+  pinMode(vib1, OUTPUT);
+  pinMode(firepin, INPUT);
+  pinMode(waterpin, INPUT);
+  pinMode(ldrpin, INPUT);
+}
+
+
+void loop() {
+  // Clears the trigPin condition
+  delay(300);
+  digitalWrite(tPin1, LOW);
+  digitalWrite(tPin2, LOW);
+  digitalWrite(tPin3, LOW);
+  delayMicroseconds(2);
+  // Sets the trigPin HIGH (ACTIVE) for 10 microseconds
+  digitalWrite(tPin1, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(tPin1, LOW);
+  dur1 = pulseIn(ePin1, HIGH);
+  
+  digitalWrite(tPin2, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(tPin2, LOW);
+  dur2 = pulseIn(ePin2, HIGH);
+  
+  digitalWrite(tPin3, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(tPin3, LOW);
+  dur3 = pulseIn(ePin3, HIGH);
+  
+  // Calculating the distance
+  dist1 = dur1 * 0.034 / 2; 
+  dist2 = dur2 * 0.034 / 2;
+  dist3 = dur3 * 0.034 / 2;
+ 
+  Serial.print("Dist1 = ");
+  Serial.println(dist1);
+  Serial.print("Dist2 = ");
+  Serial.println(dist2);
+  Serial.print("Dist3 = ");
+  Serial.println(dist3);
+
+  
+  ldrvalue = analogRead(ldrpin);
+  firevalue = digitalRead(firepin);
+  watervalue = analogRead(waterpin);
+
+
+  while (true) {
+    humidity = dht.readHumidity();
+    temperature = dht.readTemperature();
+    if (!isnan(temperature) && !isnan(humidity)) {
+      break;
+    }
+    delay(500);
+  }
+
+  
+  Serial.print("Water Sensor Value: ");
+  Serial.println(watervalue);
+  Serial.print("Fire Sensor Value: ");
+  Serial.println(firevalue);
+  Serial.print("DHT11 Temperature: ");
+  Serial.print(temperature);
+  Serial.println(" °C");
+  Serial.print("DHT11 Humidity: ");
+  Serial.print(humidity);
+  Serial.println("%");
+  Serial.print("LDR Value: ");
+  Serial.println(ldrvalue);
+
+  if(dist1<=20)
+  {
+    digitalWrite(vib1,HIGH);
+    mp3.playTrackNumber(2, 30);
+  }
+  else{
+    digitalWrite(vib1,LOW);
+  }
+  if(dist2<=20)
+  {
+    digitalWrite(vib1,HIGH);
+    mp3.playTrackNumber(3, 30);
+  }
+  else{
+    digitalWrite(vib1,LOW);
+  }
+  if(dist3<=20)
+  {
+    digitalWrite(vib1,HIGH);
+    mp3.playTrackNumber(5, 30);
+  }
+  else{
+    digitalWrite(vib1,LOW);
+  }
+
+
+  if (watervalue > 400) {
+    Serial.println("Water Level: More than Medium");
+    mp3.playTrackNumber(7, 30);
+  } 
+
+  if (firevalue == HIGH) {           // if flame is detected
+    Serial.println("Fire Detected");
+    mp3.playTrackNumber(1, 30);
+  } 
+
+  if (ldrvalue<300){
+    Serial.println("Low light conditions");
+    mp3.playTrackNumber(4, 30);
+  }
+
+  if (isnan(temperature) || isnan(humidity)) { // check if data is invalid
+    Serial.println("Error: Failed to read DHT11 sensor data!");
+  }
+
+  if (temperature > 30) {     // if temperature is higher than 30C
+    Serial.println("Temperature is Raising");
+    mp3.playTrackNumber(6, 30);
+  }
+
+}
+
